@@ -24,10 +24,10 @@ import Data.Aeson.Types (typeMismatch)
 import Data.Text as T (Text, splitOn, null)
 import qualified Data.Text.Encoding as TE
 import Data.ByteString.Lazy.Char8 (ByteString)
-import Data.ByteString.Lazy.Char8 as LBS (length, unpack, null)
+import Data.ByteString.Lazy.Char8 as LBS (unpack, null)
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.ByteString.Base64.Lazy as B64
-import qualified Data.ByteString.Lazy.Internal as LBS (ByteString(..)) 
+import qualified Data.ByteString.Lazy.Internal as LBS (ByteString(..))
 
 import Control.Monad.Base
 import Control.Exception.Lifted (throwIO)
@@ -48,7 +48,7 @@ fromStrict :: BS.ByteString -> LBS.ByteString
 fromStrict bs | BS.null bs = LBS.Empty
               | otherwise = LBS.Chunk bs LBS.Empty
 
-              
+
 --Compatability function to support http-client < 0.4.30
 defaultRequest :: Request
 #if MIN_VERSION_http_client(0,4,30)
@@ -84,7 +84,7 @@ sendHTTPRequest req = do
                          , histResponse = tryRes
                          , histRetryCount = nRetries
                          }
-  putSession s { wdSessHist = wdSessHistUpdate h wdSessHist } 
+  putSession s { wdSessHist = wdSessHistUpdate h wdSessHist }
   return tryRes
 
 retryOnTimeout :: Int -> IO a -> IO (Int, (Either SomeException a))
@@ -99,10 +99,10 @@ retryOnTimeout maxRetry go = retry' 0
 #else
           | Just HTTPClient.ResponseTimeout <- fromException e
 #endif
-          , maxRetry > nRetries 
+          , maxRetry > nRetries
           -> retry' (succ nRetries)
         other -> return (nRetries, other)
- 
+
 -- |Parses a 'WDResponse' object from a given HTTP response.
 getJSONResult :: (WDSessionStateControl s, FromJSON a) => Response ByteString -> s (Either SomeException a)
 getJSONResult r
@@ -111,19 +111,19 @@ getJSONResult r
     lastReq <- mostRecentHTTPRequest <$> getSession
     returnErr . UnknownCommand . maybe reason show $ lastReq
   --server-side errors
-  | code >= 500 && code < 600 = 
+  | code >= 500 && code < 600 =
     case lookup hContentType headers of
       Just ct
         | "application/json" `BS.isInfixOf` ct ->
-          parseJSON' 
+          parseJSON'
             (maybe body fromStrict $ lookup "X-Response-Body-Start" headers)
           >>= handleJSONErr
           >>= maybe returnNull returnErr
-        | otherwise -> 
+        | otherwise ->
           returnHTTPErr ServerError
       Nothing ->
         returnHTTPErr (ServerError . ("HTTP response missing content type. Server reason was: "++))
-  --redirect case (used as a response to createSession requests) 
+  --redirect case (used as a response to createSession requests)
   | code == 302 || code == 303 =
     case lookup hLocation headers of
       Nothing ->  returnErr . HTTPStatusUnknown code $ LBS.unpack body
@@ -134,12 +134,12 @@ getJSONResult r
   -- No Content response
   | code == 204 = returnNull
   -- HTTP Success
-  | code >= 200 && code < 300 = 
+  | code >= 200 && code < 300 =
     if LBS.null body
       then returnNull
       else do
-        rsp@WDResponse {rspVal = val} <- parseJSON' body  
-        handleJSONErr rsp >>= maybe  
+        rsp@WDResponse {rspVal = val} <- parseJSON' body
+        handleJSONErr rsp >>= maybe
           (handleRespSessionId rsp >> Right <$> fromJSON' val)
           returnErr
   -- other status codes: return error
@@ -153,8 +153,8 @@ getJSONResult r
     --HTTP response variables
     code = statusCode status
     reason = BS.unpack $ statusMessage status
-    status = responseStatus r  
-    body = responseBody r  
+    status = responseStatus r
+    body = responseBody r
     headers = responseHeaders r
 
 handleRespSessionId :: (WDSessionStateIO s) => WDResponse -> s ()
@@ -167,7 +167,7 @@ handleRespSessionId WDResponse{rspSessId = sessId'} = do
        (_, Just False) -> throwIO . ServerError $ "Server response session ID (" ++ show sessId'
                                  ++ ") does not match local session ID (" ++ show sessId ++ ")"
        _ ->  return ()
-    
+
 handleJSONErr :: (WDSessionStateControl s) => WDResponse -> s (Maybe SomeException)
 handleJSONErr WDResponse{rspStatus = 0} = return Nothing
 handleJSONErr WDResponse{rspVal = val, rspStatus = status} = do
@@ -207,7 +207,7 @@ handleJSONErr WDResponse{rspVal = val, rspStatus = status} = do
 
 
 -- |Internal type representing the JSON response object
-data WDResponse = WDResponse { 
+data WDResponse = WDResponse {
                                rspSessId :: Maybe SessionId
                              , rspStatus :: Word8
                              , rspVal    :: Value
