@@ -13,6 +13,7 @@ import qualified Data.HashMap.Strict as HM (delete, toList)
 import Data.Text (Text, toLower, toUpper)
 import Data.Default.Class (Default(..))
 import Data.Word (Word16)
+import Data.List
 import Data.Maybe (fromMaybe, catMaybes)
 import Data.Set (Set)
 import qualified Data.Set as Set
@@ -771,7 +772,7 @@ instance ToJSON ChromePerfLogging where
     [ "enableNetwork" .= chromePerfLogging_enableNetwork
     , "enablePage" .= chromePerfLogging_enablePage
     , "enableTimeline" .= chromePerfLogging_enableTimeline
-    , "traceCategories" .= fmap Set.toList chromePerfLogging_traceCategories
+    , "traceCategories" .= fmap (intercalate "," . Set.toList) chromePerfLogging_traceCategories
     , "bufferUsageReportingInterval" .= chromePerfLogging_bufferUsageReportingInterval
     ]
 
