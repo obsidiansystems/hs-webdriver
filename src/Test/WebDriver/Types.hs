@@ -8,7 +8,7 @@ module Test.WebDriver.Types
        , Capabilities(..), defaultCaps, allCaps
        , Platform(..), ProxyType(..), UnexpectedAlertBehavior(..)
          -- ** Browser-specific capabilities
-       , Browser(..),
+       , Browser(..), ChromePerfLogging(..),
          -- ** Default settings for browsers
          firefox, chrome, ie, opera, iPhone, iPad, android
        , LogLevel(..), IELogLevel(..), IEElementScrollBehavior(..)
