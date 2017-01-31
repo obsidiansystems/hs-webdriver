@@ -14,6 +14,8 @@ import Data.Text (Text, toLower, toUpper)
 import Data.Default.Class (Default(..))
 import Data.Word (Word16)
 import Data.Maybe (fromMaybe, catMaybes)
+import Data.Set (Set)
+import qualified Data.Set as Set
 import Data.String (fromString)
 
 import Control.Applicative
@@ -47,7 +49,7 @@ useBrowser b = modifyCaps $ \c -> c { browser = b }
 useVersion :: HasCapabilities t => String -> t -> t
 useVersion v = modifyCaps $ \c -> c { version = Just v }
 
--- |A helper function for setting the 'platform' capability of a 'HasCapabilities' instance 
+-- |A helper function for setting the 'platform' capability of a 'HasCapabilities' instance
 usePlatform :: HasCapabilities t => Platform -> t -> t
 usePlatform p = modifyCaps $ \c -> c { platform = p }
 
@@ -198,6 +200,7 @@ instance ToJSON Capabilities where
           -> catMaybes [ opt "chrome.chromedriverVersion" chromeDriverVersion ]
              ++ [ "chromeOptions" .= object (catMaybes
                   [ opt "binary" chromeBinary
+                  , opt "perfLoggingPrefs" chromePerfLoggingPrefs
                   ] ++
                   [ "args"       .= chromeOptions
                   , "extensions" .= chromeExtensions
@@ -302,6 +305,7 @@ instance FromJSON Capabilities where
                                   <*> opt "chrome.extensions" Nothing
                                   <*> opt "chrome.switches" []
                                   <*> opt "chrome.extensions" []
+                                  <*> opt "chrome.perfLoggingPrefs" Nothing
               IE {} -> IE <$> opt "ignoreProtectedModeSettings" True
                           <*> opt "ignoreZoomSettings" False
                           <*> opt "initialBrowserUrl" Nothing
@@ -363,6 +367,10 @@ data Browser = Firefox { -- |The firefox profile to use. If Nothing,
                       , chromeOptions :: [String]
                         -- |A list of extensions to use.
                       , chromeExtensions :: [ChromeExtension]
+                        -- |An optional dictionary that specifies performance logging
+                        -- preferences. NOTE: You must enable performance logging
+                        -- for this to have any effect.
+                      , chromePerfLoggingPrefs :: Maybe ChromePerfLogging
                       }
              | IE { -- |Whether to skip the protected mode check. If set, tests
                     -- may become flaky, unresponsive, or browsers may hang. If
@@ -514,7 +522,7 @@ firefox = Firefox Nothing def Nothing
 -- |Default Chrome settings. All Maybe fields are set to Nothing, no options are
 -- specified, and no extensions are used.
 chrome :: Browser
-chrome = Chrome Nothing Nothing [] []
+chrome = Chrome Nothing Nothing [] [] Nothing
 
 -- |Default IE settings. See the 'IE' constructor for more details on
 -- individual defaults
@@ -740,3 +748,40 @@ instance FromJSON IEElementScrollBehavior where
       1 -> return AlignBottom
       _ -> fail $ "Invalid integer for IEElementScrollBehavior: " ++ show n
 
+data ChromePerfLogging = ChromePerfLogging
+   { chromePerfLogging_enableNetwork :: Maybe Bool
+   -- ^ Whether or not to collect events from Network domain. Default: true
+   , chromePerfLogging_enablePage :: Maybe Bool
+   -- ^ Whether or not to collect events from Page domain. Default: true
+   , chromePerfLogging_enableTimeline :: Maybe Bool
+   -- ^ Whether or not to collect events from Timeline domain. Default: true
+   -- Note: When tracing is enabled, Timeline domain is implicitly disabled, unless
+   -- chromePerfLogging_enableTimeline is explicitly set to true.
+   , chromePerfLogging_tracingCategories :: Maybe (Set String)
+   -- ^ A 'Set' of Chrome tracing categories specified by 'String's for which trace
+   -- events should be collected. When unspecified or empty disables tracing. Default: empty
+   , chromePerfLogging_bufferUsageReportingInterval :: Maybe Int
+   -- ^ The requested number of milliseconds between DevTools trace buffer usage events
+   -- For example, if 1000, then once per second DevTool will report how full the trace
+   -- buffer is. If a report indicates the buffer usage is 100%, a warning will be issued.
+   } deriving (Eq, Ord, Show, Read)
+
+instance ToJSON ChromePerfLogging where
+  toJSON ChromePerfLogging{..} = object $ filter (\p -> snd p /= Null) $
+    [ "enableNetwork" .= chromePerfLogging_enableNetwork
+    , "enablePage" .= chromePerfLogging_enablePage
+    , "enableTimeline" .= chromePerfLogging_enableTimeline
+    , "tracingCategories" .= fmap Set.toList chromePerfLogging_tracingCategories
+    , "bufferUsageReportingInterval" .= chromePerfLogging_bufferUsageReportingInterval
+    ]
+
+instance FromJSON ChromePerfLogging where
+  parseJSON = withObject "dictionary" $ \o -> do
+    let opt :: FromJSON a => Text -> a -> Parser a
+        opt k d = o .:?? k .!= d -- optional field
+    ChromePerfLogging
+      <$> opt "enableNetwork" Nothing
+      <*> opt "enablePage" Nothing
+      <*> opt "enableTimeline" Nothing
+      <*> (fmap Set.fromList <$> opt "tracingCategories" Nothing)
+      <*> opt "bufferUsageReportingInterval" Nothing
