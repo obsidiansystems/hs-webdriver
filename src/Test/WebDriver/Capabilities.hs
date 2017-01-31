@@ -785,3 +785,6 @@ instance FromJSON ChromePerfLogging where
       <*> opt "enableTimeline" Nothing
       <*> (fmap Set.fromList <$> opt "tracingCategories" Nothing)
       <*> opt "bufferUsageReportingInterval" Nothing
+
+instance Default ChromePerfLogging where
+  def = ChromePerfLogging Nothing Nothing Nothing Nothing Nothing
