@@ -757,7 +757,7 @@ data ChromePerfLogging = ChromePerfLogging
    -- ^ Whether or not to collect events from Timeline domain. Default: true
    -- Note: When tracing is enabled, Timeline domain is implicitly disabled, unless
    -- chromePerfLogging_enableTimeline is explicitly set to true.
-   , chromePerfLogging_tracingCategories :: Maybe (Set String)
+   , chromePerfLogging_traceCategories :: Maybe (Set String)
    -- ^ A 'Set' of Chrome tracing categories specified by 'String's for which trace
    -- events should be collected. When unspecified or empty disables tracing. Default: empty
    , chromePerfLogging_bufferUsageReportingInterval :: Maybe Int
@@ -771,7 +771,7 @@ instance ToJSON ChromePerfLogging where
     [ "enableNetwork" .= chromePerfLogging_enableNetwork
     , "enablePage" .= chromePerfLogging_enablePage
     , "enableTimeline" .= chromePerfLogging_enableTimeline
-    , "tracingCategories" .= fmap Set.toList chromePerfLogging_tracingCategories
+    , "traceCategories" .= fmap Set.toList chromePerfLogging_traceCategories
     , "bufferUsageReportingInterval" .= chromePerfLogging_bufferUsageReportingInterval
     ]
 
@@ -783,7 +783,7 @@ instance FromJSON ChromePerfLogging where
       <$> opt "enableNetwork" Nothing
       <*> opt "enablePage" Nothing
       <*> opt "enableTimeline" Nothing
-      <*> (fmap Set.fromList <$> opt "tracingCategories" Nothing)
+      <*> (fmap Set.fromList <$> opt "traceCategories" Nothing)
       <*> opt "bufferUsageReportingInterval" Nothing
 
 instance Default ChromePerfLogging where
